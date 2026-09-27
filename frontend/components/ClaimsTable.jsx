@@ -7,9 +7,15 @@ export default function ClaimsTable({ claims }) {
 
   if (!claims || claims.length === 0) return null;
 
-  const filteredClaims = filter === "all"
-    ? claims
-    : claims.filter((c) => (c.confidence || 0) >= 0.9);
+  const verifiedCount = claims.filter((c) => c.verified).length;
+  const conflictCount = claims.filter((c) => c.conflict_flag).length;
+
+  const filteredClaims = claims.filter((c) => {
+    if (filter === "verified") return c.verified;
+    if (filter === "conflicts") return c.conflict_flag;
+    if (filter === "high") return (c.confidence || 0) >= 0.9;
+    return true;
+  });
 
   return (
     <div className="claims-panel">
@@ -17,7 +23,8 @@ export default function ClaimsTable({ claims }) {
         <div className="claims-title-group">
           <span className="claims-icon">📊</span>
           <h3 className="claims-heading">
-            Extracted Factual Claims <span className="claims-count-badge">{claims.length}</span>
+            Extracted Factual Claims & Verification
+            <span className="claims-count-badge">{claims.length}</span>
           </h3>
         </div>
         <div className="claims-filters">
@@ -25,8 +32,22 @@ export default function ClaimsTable({ claims }) {
             className={`filter-btn ${filter === "all" ? "active" : ""}`}
             onClick={() => setFilter("all")}
           >
-            All Claims ({claims.length})
+            All ({claims.length})
           </button>
+          <button
+            className={`filter-btn ${filter === "verified" ? "active" : ""}`}
+            onClick={() => setFilter("verified")}
+          >
+            ✓ Verified ({verifiedCount})
+          </button>
+          {conflictCount > 0 && (
+            <button
+              className={`filter-btn conflict-tab ${filter === "conflicts" ? "active" : ""}`}
+              onClick={() => setFilter("conflicts")}
+            >
+              ⚠️ Conflicts ({conflictCount})
+            </button>
+          )}
           <button
             className={`filter-btn ${filter === "high" ? "active" : ""}`}
             onClick={() => setFilter("high")}
@@ -47,16 +68,31 @@ export default function ClaimsTable({ claims }) {
           }
 
           return (
-            <div key={claim.id || idx} className="claim-card">
+            <div
+              key={claim.id || idx}
+              className={`claim-card ${claim.conflict_flag ? "has-conflict" : ""} ${claim.verified ? "is-verified" : ""}`}
+            >
               <div className="claim-top-row">
                 <span className="claim-index">#{idx + 1}</span>
-                {claim.sub_question && (
-                  <span className="claim-subq" title={claim.sub_question}>
-                    {claim.sub_question.length > 55
-                      ? claim.sub_question.slice(0, 52) + "…"
-                      : claim.sub_question}
+
+                {claim.verified && (
+                  <span className="claim-status-badge verified">
+                    ✓ Verified
                   </span>
                 )}
+
+                {claim.conflict_flag && (
+                  <span className="claim-status-badge conflict">
+                    ⚠️ Conflict Flagged
+                  </span>
+                )}
+
+                {!claim.verified && !claim.conflict_flag && (
+                  <span className="claim-status-badge unverified">
+                    Single Source
+                  </span>
+                )}
+
                 <span
                   className="claim-confidence"
                   style={{
@@ -75,6 +111,14 @@ export default function ClaimsTable({ claims }) {
                 </span>
               </div>
 
+              {claim.sub_question && (
+                <div className="claim-subq-row">
+                  <span className="claim-subq" title={claim.sub_question}>
+                    🔍 {claim.sub_question}
+                  </span>
+                </div>
+              )}
+
               <p className="claim-text">{claim.claim_text}</p>
 
               {claim.supporting_quote && (
@@ -83,6 +127,12 @@ export default function ClaimsTable({ claims }) {
                   {claim.supporting_quote}
                   <span className="quote-mark">”</span>
                 </blockquote>
+              )}
+
+              {claim.verification_notes && (
+                <div className="claim-verification-note">
+                  <span className="note-label">Fact Check:</span> {claim.verification_notes}
+                </div>
               )}
 
               <div className="claim-footer">

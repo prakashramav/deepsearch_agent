@@ -1024,6 +1024,88 @@ button { cursor: pointer; font-family: inherit; }
   text-decoration: underline;
 }
 
+/* ── Phase 5 Verification & Conflict Styles ─────────────────────────────────── */
+.claim-card.is-verified {
+  border-color: rgba(52, 211, 153, 0.25);
+}
+
+.claim-card.has-conflict {
+  border-color: rgba(248, 113, 113, 0.35);
+  background: linear-gradient(145deg, rgba(248, 113, 113, 0.04) 0%, var(--bg-surface) 100%);
+}
+
+.claim-status-badge {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  border-radius: 4px;
+  padding: 2px 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.claim-status-badge.verified {
+  background: rgba(52, 211, 153, 0.12);
+  color: var(--emerald);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+.claim-status-badge.conflict {
+  background: rgba(248, 113, 113, 0.12);
+  color: var(--rose);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+}
+
+.claim-status-badge.unverified {
+  background: rgba(148, 163, 184, 0.08);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.claim-subq-row {
+  display: flex;
+}
+
+.claim-verification-note {
+  font-size: 0.76rem;
+  color: #cbd5e1;
+  background: rgba(129, 140, 248, 0.05);
+  border: 1px solid rgba(129, 140, 248, 0.12);
+  border-radius: 4px;
+  padding: 6px 10px;
+  line-height: 1.4;
+}
+
+.claim-verification-note .note-label {
+  font-weight: 600;
+  color: var(--violet);
+  margin-right: 4px;
+}
+
+.filter-btn.conflict-tab {
+  color: var(--rose);
+  border-color: rgba(248, 113, 113, 0.3);
+}
+
+.filter-btn.conflict-tab.active {
+  background: rgba(248, 113, 113, 0.15);
+  border-color: rgba(248, 113, 113, 0.5);
+  color: #fca5a5;
+}
+
+.verified-meta {
+  color: var(--emerald) !important;
+  background: rgba(52, 211, 153, 0.1) !important;
+  border-color: rgba(52, 211, 153, 0.25) !important;
+}
+
+.conflict-meta {
+  color: var(--rose) !important;
+  background: rgba(248, 113, 113, 0.1) !important;
+  border-color: rgba(248, 113, 113, 0.25) !important;
+}
+
 /* ── Footer ──────────────────────────────────────────────────────────────────── */
 .app-footer {
   border-top: 1px solid var(--border);

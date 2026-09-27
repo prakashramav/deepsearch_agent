@@ -18,6 +18,7 @@ from app.agents.planner import generate_plan
 from app.agents.researcher import run_parallel_research, search_sub_question
 from app.agents.synthesizer import synthesize_report
 from app.agents.extractor import extract_claims
+from app.agents.fact_checker import verify_claims
 
 logger = logging.getLogger(__name__)
 
@@ -102,11 +103,18 @@ async def execute_research_run(run_id: str) -> None:
 
         # Step 3: Data Extraction (Phase 4)
         logger.info("Run %s: extracting factual claims from sources", run_id)
-        claims = await extract_claims(question, sources)
+        raw_claims = await extract_claims(question, sources)
 
-        # Persist extracted claims
+        # Step 4: Fact Checking & Conflict Detection (Phase 5)
+        logger.info("Run %s: fact-checking %d claims across sources", run_id, len(raw_claims))
         async with AsyncSessionLocal() as db:
-            for c in claims:
+            await _set_status(db, run_id, RunStatus.FACT_CHECKING)
+
+        verified_claims = await verify_claims(raw_claims, sources)
+
+        # Persist verified claims with verification and conflict flags
+        async with AsyncSessionLocal() as db:
+            for c in verified_claims:
                 db.add(
                     Claim(
                         run_id=run_id,
@@ -115,13 +123,19 @@ async def execute_research_run(run_id: str) -> None:
                         supporting_quote=c.get("supporting_quote"),
                         source_url=c["source_url"],
                         confidence=c.get("confidence"),
+                        verified=c.get("verified"),
+                        conflict_flag=c.get("conflict_flag"),
                     )
                 )
             await db.commit()
 
-        # Step 4: Synthesis
+        # Step 5: Synthesis
         logger.info("Run %s: synthesizing report from %d sources", run_id, len(sources))
         summary = await synthesize_report(question, plan, sources)
+
+        # Calculate counts
+        verified_count = sum(1 for c in verified_claims if c.get("verified"))
+        conflict_count = sum(1 for c in verified_claims if c.get("conflict_flag"))
 
         # Save result and finalize run
         async with AsyncSessionLocal() as db:
@@ -134,7 +148,9 @@ async def execute_research_run(run_id: str) -> None:
                     metadata_={
                         "source_count": len(sources),
                         "sub_questions_count": len(sub_questions),
-                        "claim_count": len(claims),
+                        "claim_count": len(verified_claims),
+                        "verified_count": verified_count,
+                        "conflict_count": conflict_count,
                         "domain": plan.get("domain", "General Research"),
                     },
                 )
@@ -142,10 +158,12 @@ async def execute_research_run(run_id: str) -> None:
             await db.commit()
 
         logger.info(
-            "Run %s complete with %d sources and %d claims",
+            "Run %s complete: %d sources, %d claims (%d verified, %d conflicts)",
             run_id,
             len(sources),
-            len(claims),
+            len(verified_claims),
+            verified_count,
+            conflict_count,
         )
 
     except Exception as exc:

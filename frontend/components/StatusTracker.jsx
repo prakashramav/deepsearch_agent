@@ -75,7 +75,22 @@ export default function StatusTracker({ run }) {
         )}
         {run.metadata?.source_count !== undefined && (
           <span className="source-count">
-            📚 {run.metadata.source_count} sources found
+            📚 {run.metadata.source_count} sources
+          </span>
+        )}
+        {run.metadata?.claim_count !== undefined && (
+          <span className="source-count">
+            📊 {run.metadata.claim_count} claims
+          </span>
+        )}
+        {run.metadata?.verified_count !== undefined && (
+          <span className="source-count verified-meta">
+            ✓ {run.metadata.verified_count} verified
+          </span>
+        )}
+        {run.metadata?.conflict_count !== undefined && run.metadata.conflict_count > 0 && (
+          <span className="source-count conflict-meta">
+            ⚠️ {run.metadata.conflict_count} conflicts
           </span>
         )}
       </div>
