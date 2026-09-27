@@ -37,13 +37,30 @@ app = FastAPI(
 )
 
 # ── CORS ─────────────────────────────────────────────────────────────────────
+origins = settings.cors_origins_list
+allow_all = "*" in origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
+    allow_origins=origins,
+    allow_origin_regex=r"^https?://.*" if allow_all else None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ── Root endpoint ─────────────────────────────────────────────────────────────
+@app.get("/", tags=["root"])
+async def root() -> dict[str, str]:
+    return {
+        "status": "online",
+        "message": "DeepResearch Agent API is running",
+        "version": "0.1.0",
+        "docs": "/docs",
+        "health": "/health",
+        "api": "/api/v1/research",
+    }
 
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────

@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     google_api_key: str = ""
     gemini_model: str = "gemini-2.5-flash"
     tavily_api_key: str = ""
-    cors_origins: str = "http://localhost:3000"
+    cors_origins: str = "*"
     environment: str = "development"
     log_level: str = "INFO"
 
@@ -23,7 +23,10 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins_list(self) -> list[str]:
-        return [o.strip() for o in self.cors_origins.split(",")]
+        if not self.cors_origins or self.cors_origins.strip() == "*":
+            return ["*"]
+        origins = [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        return origins if origins else ["*"]
 
 
 @lru_cache
