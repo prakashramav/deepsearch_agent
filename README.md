@@ -35,7 +35,7 @@ Next.js UI ──── REST API ────► FastAPI Backend
 |------------|-------------------------------------|
 | Frontend   | Next.js 15 (App Router), Vanilla CSS |
 | Backend    | FastAPI (Python), async SQLAlchemy  |
-| Agents     | LangGraph, LangChain, Claude Sonnet |
+| Agents     | LangGraph, Google Gemini 2.5 Flash  |
 | Search     | Tavily (purpose-built for LLM agents) |
 | Database   | PostgreSQL + pgvector               |
 | Cache/Queue| Redis                               |
@@ -53,7 +53,7 @@ cd DeepResearch-Agent
 
 # Copy and fill in credentials
 cp .env.example .env
-# Edit .env — add your ANTHROPIC_API_KEY and TAVILY_API_KEY
+# Edit .env — add your GEMINI_API_KEY and TAVILY_API_KEY
 ```
 
 ### 2. Run with Docker Compose (recommended)
@@ -213,11 +213,11 @@ Result: ~1500-word Markdown report with:
 
 ```env
 # Root .env (for Docker Compose)
-ANTHROPIC_API_KEY=sk-ant-...   # Get from console.anthropic.com
+GEMINI_API_KEY=AIzaSy...        # Get from aistudio.google.com
 TAVILY_API_KEY=tvly-...         # Get from app.tavily.com
 
 # backend/.env (for local run — same keys plus DB config)
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/deepresearch
+DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/deepresearch
 REDIS_URL=redis://localhost:6379/0
 CORS_ORIGINS=http://localhost:3000
 ```

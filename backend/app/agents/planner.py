@@ -17,9 +17,11 @@ import logging
 import re
 from typing import TypedDict
 
-import anthropic
+from google import genai
+from google.genai import types
 
 from app.config import get_settings
+from app.agents.gemini import get_gemini_client
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -67,14 +69,12 @@ markdown fences:
 
 # ── Planner implementation ────────────────────────────────────────────────────
 
-def _get_client() -> anthropic.Anthropic:
-    if not settings.anthropic_api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY is not set in .env")
-    return anthropic.Anthropic(api_key=settings.anthropic_api_key)
+def _get_client() -> genai.Client:
+    return get_gemini_client()
 
 
 def _extract_json(text: str) -> dict:
-    """Extract JSON from Claude's response robustly."""
+    """Extract JSON from Gemini's response robustly."""
     # Strip any accidental markdown fences
     text = re.sub(r"```json?\s*", "", text).strip().strip("`").strip()
     return json.loads(text)
@@ -98,7 +98,7 @@ def _validate_plan(plan: dict) -> ResearchPlan:
 
 async def generate_plan(question: str, max_retries: int = 2) -> ResearchPlan:
     """
-    Call Claude to produce a structured research plan.
+    Call Gemini to produce a structured research plan.
 
     Retries up to max_retries times on malformed JSON output.
     """
@@ -112,19 +112,16 @@ async def generate_plan(question: str, max_retries: int = 2) -> ResearchPlan:
             logger.info("Planner attempt %d for question: %.80s", attempt + 1, question)
             response = await loop.run_in_executor(
                 None,
-                lambda: client.messages.create(
-                    model="claude-sonnet-4-5",
-                    max_tokens=1024,
-                    system=_SYSTEM_PROMPT,
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": f"Research question: {question}",
-                        }
-                    ],
+                lambda: client.models.generate_content(
+                    model=settings.gemini_model,
+                    contents=f"Research question: {question}",
+                    config=types.GenerateContentConfig(
+                        system_instruction=_SYSTEM_PROMPT,
+                        temperature=0.2,
+                    ),
                 ),
             )
-            raw = response.content[0].text
+            raw = response.text or ""
             logger.debug("Planner raw output: %s", raw[:500])
             plan_dict = _extract_json(raw)
             return _validate_plan(plan_dict)

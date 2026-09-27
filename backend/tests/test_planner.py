@@ -25,14 +25,12 @@ MOCK_VALID_PLAN = {
 
 @pytest.mark.asyncio
 async def test_generate_plan_success():
-    """Planner should parse valid JSON response from Claude into a ResearchPlan."""
-    mock_msg = MagicMock()
-    mock_msg.text = json.dumps(MOCK_VALID_PLAN)
+    """Planner should parse valid JSON response from Gemini into a ResearchPlan."""
     mock_response = MagicMock()
-    mock_response.content = [mock_msg]
+    mock_response.text = json.dumps(MOCK_VALID_PLAN)
 
     mock_client = MagicMock()
-    mock_client.messages.create.return_value = mock_response
+    mock_client.models.generate_content.return_value = mock_response
 
     with patch("app.agents.planner._get_client", return_value=mock_client):
         plan = await generate_plan("Analyze the EV market in India")
@@ -46,14 +44,12 @@ async def test_generate_plan_success():
 
 @pytest.mark.asyncio
 async def test_generate_plan_handles_markdown_code_fences():
-    """Planner should cleanly extract JSON even if Claude wraps it in markdown fences."""
-    mock_msg = MagicMock()
-    mock_msg.text = f"```json\n{json.dumps(MOCK_VALID_PLAN)}\n```"
+    """Planner should cleanly extract JSON even if Gemini wraps it in markdown fences."""
     mock_response = MagicMock()
-    mock_response.content = [mock_msg]
+    mock_response.text = f"```json\n{json.dumps(MOCK_VALID_PLAN)}\n```"
 
     mock_client = MagicMock()
-    mock_client.messages.create.return_value = mock_response
+    mock_client.models.generate_content.return_value = mock_response
 
     with patch("app.agents.planner._get_client", return_value=mock_client):
         plan = await generate_plan("Analyze the EV market in India")
@@ -63,14 +59,12 @@ async def test_generate_plan_handles_markdown_code_fences():
 
 @pytest.mark.asyncio
 async def test_generate_plan_fallback_on_invalid_json():
-    """Planner should fall back gracefully if Claude returns invalid JSON."""
-    mock_msg = MagicMock()
-    mock_msg.text = "This is not valid JSON at all."
+    """Planner should fall back gracefully if Gemini returns invalid JSON."""
     mock_response = MagicMock()
-    mock_response.content = [mock_msg]
+    mock_response.text = "This is not valid JSON at all."
 
     mock_client = MagicMock()
-    mock_client.messages.create.return_value = mock_response
+    mock_client.models.generate_content.return_value = mock_response
 
     with patch("app.agents.planner._get_client", return_value=mock_client):
         plan = await generate_plan("Explain quantum computing", max_retries=1)

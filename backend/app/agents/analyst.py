@@ -10,18 +10,22 @@ import asyncio
 import logging
 from typing import Any
 
-import anthropic
+from google import genai
+from google.genai import types
 
 from app.config import get_settings
+from app.agents.gemini import get_gemini_client, generate_text
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
-def _get_anthropic() -> anthropic.Anthropic:
-    if not settings.anthropic_api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY is not set in .env")
-    return anthropic.Anthropic(api_key=settings.anthropic_api_key)
+def _get_anthropic() -> Any:
+    return get_gemini_client()
+
+
+def _get_gemini_client() -> Any:
+    return _get_anthropic()
 
 
 _SYSTEM_PROMPT = """You are a senior strategic research analyst.
@@ -68,21 +72,16 @@ async def analyze_research(
         "Generate a rigorous strategic analysis."
     )
 
-    client = _get_anthropic()
-    loop = asyncio.get_event_loop()
+    client = _get_gemini_client()
 
     try:
         logger.info("Analyst generating strategic analysis for: %.60s", question)
-        response = await loop.run_in_executor(
-            None,
-            lambda: client.messages.create(
-                model="claude-sonnet-4-5",
-                max_tokens=2500,
-                system=_SYSTEM_PROMPT,
-                messages=[{"role": "user", "content": user_prompt}],
-            ),
+        return await generate_text(
+            client=client,
+            prompt=user_prompt,
+            system_prompt=_SYSTEM_PROMPT,
+            max_tokens=2500,
         )
-        return response.content[0].text
     except Exception as exc:
         logger.warning("Analyst failed: %s, using fallback synthesis", exc)
         return _fallback_analysis(question, verified_claims)

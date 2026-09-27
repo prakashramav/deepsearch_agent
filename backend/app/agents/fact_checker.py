@@ -12,9 +12,11 @@ import logging
 import re
 from typing import Any, TypedDict
 
-import anthropic
+from google import genai
+from google.genai import types
 
 from app.config import get_settings
+from app.agents.gemini import get_gemini_client, generate_text
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -27,10 +29,12 @@ class ClaimVerification(TypedDict):
     verification_notes: str
 
 
-def _get_anthropic() -> anthropic.Anthropic:
-    if not settings.anthropic_api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY is not set in .env")
-    return anthropic.Anthropic(api_key=settings.anthropic_api_key)
+def _get_anthropic() -> Any:
+    return get_gemini_client()
+
+
+def _get_gemini_client() -> Any:
+    return _get_anthropic()
 
 
 def _extract_json(text: str) -> list[dict[str, Any]]:
@@ -100,22 +104,17 @@ async def verify_claims(
         "Verify each claim against all sources and return the JSON array."
     )
 
-    client = _get_anthropic()
-    loop = asyncio.get_event_loop()
+    client = _get_gemini_client()
 
     for attempt in range(max_retries + 1):
         try:
             logger.info("FactChecker verification attempt %d for %d claims", attempt + 1, len(claims))
-            response = await loop.run_in_executor(
-                None,
-                lambda: client.messages.create(
-                    model="claude-sonnet-4-5",
-                    max_tokens=2048,
-                    system=_SYSTEM_PROMPT,
-                    messages=[{"role": "user", "content": user_prompt}],
-                ),
+            raw = await generate_text(
+                client=client,
+                prompt=user_prompt,
+                system_prompt=_SYSTEM_PROMPT,
+                max_tokens=2048,
             )
-            raw = response.content[0].text
             verifications = _extract_json(raw)
             return _apply_verifications(claims, verifications)
         except Exception as exc:

@@ -10,10 +10,12 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-import anthropic
+from google import genai
+from google.genai import types
 from tavily import TavilyClient
 
 from app.config import get_settings
+from app.agents.gemini import get_gemini_client, generate_text
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -27,10 +29,12 @@ def _get_tavily() -> TavilyClient:
     return TavilyClient(api_key=settings.tavily_api_key)
 
 
-def _get_anthropic() -> anthropic.Anthropic:
-    if not settings.anthropic_api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY is not set in .env")
-    return anthropic.Anthropic(api_key=settings.anthropic_api_key)
+def _get_anthropic() -> Any:
+    return get_gemini_client()
+
+
+def _get_gemini_client() -> Any:
+    return _get_anthropic()
 
 
 # ── Phase 1: linear chain ─────────────────────────────────────────────────────
@@ -77,8 +81,8 @@ async def run_linear_chain(question: str) -> tuple[str, list[dict]]:
     context = "\n---\n".join(context_lines)
 
     # Step 2 — LLM summarisation
-    logger.info("Phase 1 | LLM summarisation via Claude")
-    client = _get_anthropic()
+    logger.info("Phase 1 | LLM summarisation via Gemini")
+    client = _get_gemini_client()
 
     system_prompt = (
         "You are an expert research analyst. Given a research question and web "
@@ -93,17 +97,12 @@ async def run_linear_chain(question: str) -> tuple[str, list[dict]]:
         "Please synthesise these results into a comprehensive Markdown summary."
     )
 
-    response = await loop.run_in_executor(
-        None,
-        lambda: client.messages.create(
-            model="claude-sonnet-4-5",
-            max_tokens=4096,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_message}],
-        ),
+    summary = await generate_text(
+        client=client,
+        prompt=user_message,
+        system_prompt=system_prompt,
+        max_tokens=4096,
     )
-
-    summary = response.content[0].text
 
     sources = [
         {
