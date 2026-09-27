@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Run, RunStatus, Source
+from app.models import Run, RunStatus, Source, Claim
 from app.schemas import ResearchRequest, RunCreate, RunResponse
 from app.tasks import execute_research_run
 
@@ -88,6 +88,31 @@ async def get_run_sources(
             "fetched_at": s.fetched_at,
         }
         for s in sources
+    ]
+
+
+@router.get("/{run_id}/claims")
+async def get_run_claims(
+    run_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return the list of extracted factual claims for a given run."""
+    result = await db.execute(select(Claim).where(Claim.run_id == run_id))
+    claims = result.scalars().all()
+    return [
+        {
+            "id": c.id,
+            "run_id": c.run_id,
+            "claim_text": c.claim_text,
+            "supporting_quote": c.supporting_quote,
+            "source_url": c.source_url,
+            "sub_question": c.sub_question,
+            "confidence": c.confidence,
+            "verified": c.verified,
+            "conflict_flag": c.conflict_flag,
+            "created_at": c.created_at,
+        }
+        for c in claims
     ]
 
 

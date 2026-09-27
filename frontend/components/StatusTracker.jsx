@@ -68,9 +68,14 @@ export default function StatusTracker({ run }) {
       {/* Run metadata */}
       <div className="run-meta">
         <span className="run-id">Run ID: <code>{run.run_id}</code></span>
+        {run.metadata?.sub_questions_count !== undefined && (
+          <span className="source-count">
+            🧠 {run.metadata.sub_questions_count} sub-questions
+          </span>
+        )}
         {run.metadata?.source_count !== undefined && (
           <span className="source-count">
-            {run.metadata.source_count} sources found
+            📚 {run.metadata.source_count} sources found
           </span>
         )}
       </div>

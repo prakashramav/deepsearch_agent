@@ -7,7 +7,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { startResearch, getResearchRun, getRunSources } from "@/lib/api";
+import { startResearch, getResearchRun, getRunSources, getRunClaims } from "@/lib/api";
 
 const POLL_INTERVAL_MS = 2500;
 const TERMINAL_STATUSES = new Set(["complete", "failed"]);
@@ -15,6 +15,7 @@ const TERMINAL_STATUSES = new Set(["complete", "failed"]);
 export function useResearch() {
   const [run, setRun] = useState(null);
   const [sources, setSources] = useState([]);
+  const [claims, setClaims] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const pollRef = useRef(null);
@@ -38,9 +39,13 @@ export function useResearch() {
             stopPolling();
             setLoading(false);
 
-            // Fetch sources once done
-            const srcs = await getRunSources(runId);
+            // Fetch sources and claims once done
+            const [srcs, clms] = await Promise.all([
+              getRunSources(runId),
+              getRunClaims(runId),
+            ]);
             setSources(srcs);
+            setClaims(clms);
           }
         } catch (err) {
           setError(err.message);
@@ -58,6 +63,7 @@ export function useResearch() {
       setError(null);
       setRun(null);
       setSources([]);
+      setClaims([]);
       stopPolling();
 
       try {
@@ -74,5 +80,5 @@ export function useResearch() {
     [startPolling, stopPolling]
   );
 
-  return { run, sources, submit, loading, error };
+  return { run, sources, claims, submit, loading, error };
 }

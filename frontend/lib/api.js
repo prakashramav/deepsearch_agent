@@ -33,6 +33,12 @@ export async function getRunSources(runId) {
   return res.json();
 }
 
+export async function getRunClaims(runId) {
+  const res = await fetch(`${API_BASE}/api/v1/research/${runId}/claims`);
+  if (!res.ok) return [];
+  return res.json();
+}
+
 export async function healthCheck() {
   const res = await fetch(`${API_BASE}/health`);
   if (!res.ok) throw new Error("Backend unreachable");

@@ -26,6 +26,11 @@ export default function SourcesList({ sources }) {
             <div className="source-info">
               <span className="source-title">{s.title || "Untitled"}</span>
               <span className="source-url">{s.url}</span>
+              {s.sub_question && (
+                <span className="source-sub-q">
+                  🔍 {s.sub_question}
+                </span>
+              )}
               {s.snippet && (
                 <span className="source-snippet">
                   {s.snippet.length > 120 ? s.snippet.slice(0, 117) + "…" : s.snippet}

@@ -2,7 +2,7 @@
 
 > **Multi-agent AI research system** — takes any research question, runs parallel web search across specialized agents, fact-checks claims against multiple sources, and produces a fully cited Markdown report.
 
-[![Phase](https://img.shields.io/badge/Phase-1%20Complete-brightgreen)](#phases)
+[![Phase](https://img.shields.io/badge/Phase-4%20Complete-brightgreen)](#phases)
 [![Stack](https://img.shields.io/badge/Stack-FastAPI%20%7C%20Next.js%20%7C%20LangGraph-blue)](#tech-stack)
 
 ---
@@ -123,10 +123,10 @@ curl http://localhost:8000/api/v1/research/abc-123
 | Phase | Description                                   | Status |
 |-------|-----------------------------------------------|--------|
 | 1     | Core scaffold: question → search → report     | ✅ Done |
-| 2     | Planner: decompose into sub-questions          | 🔜 Next |
-| 3     | Parallel research + source collection         | 🔜     |
-| 4     | Data extraction (claims table)                | 🔜     |
-| 5     | Conflict detection + fact verification        | 🔜     |
+| 2     | Planner: decompose into sub-questions          | ✅ Done |
+| 3     | Parallel research + source collection         | ✅ Done |
+| 4     | Data extraction (claims table)                | ✅ Done |
+| 5     | Conflict detection + fact verification        | 🔜 Next |
 | 6     | Synthesis, writing, citations                 | 🔜     |
 | 7     | Supervisor node + retry logic                 | 🔜     |
 | 8     | PDF export + full pipeline UI demo            | 🔜     |

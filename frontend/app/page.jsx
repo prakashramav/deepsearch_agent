@@ -5,10 +5,12 @@ import QuestionForm from "@/components/QuestionForm";
 import StatusTracker from "@/components/StatusTracker";
 import ReportViewer from "@/components/ReportViewer";
 import SourcesList from "@/components/SourcesList";
+import PlanViewer from "@/components/PlanViewer";
+import ClaimsTable from "@/components/ClaimsTable";
 import { useResearch } from "@/hooks/useResearch";
 
 export default function HomePage() {
-  const { run, sources, submit, loading, error } = useResearch();
+  const { run, sources, claims, submit, loading, error } = useResearch();
   const [question, setQuestion] = useState("");
 
   const handleSubmit = (q) => {
@@ -86,6 +88,13 @@ export default function HomePage() {
           </section>
         )}
 
+        {/* Phase 2: Research Plan */}
+        {run?.plan && (
+          <section className="card plan-card">
+            <PlanViewer plan={run.plan} />
+          </section>
+        )}
+
         {/* Result area */}
         {hasResult && (
           <div className="results-grid">
@@ -101,6 +110,13 @@ export default function HomePage() {
               </aside>
             )}
           </div>
+        )}
+
+        {/* Phase 4: Extracted Factual Claims */}
+        {hasResult && claims.length > 0 && (
+          <section className="card claims-card">
+            <ClaimsTable claims={claims} />
+          </section>
         )}
 
         {/* Loading skeleton */}

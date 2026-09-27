@@ -13,8 +13,11 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import AsyncSessionLocal
-from app.models import Run, RunStatus, Source
-from app.agents.phase1_chain import run_linear_chain
+from app.models import Run, RunStatus, Source, Claim
+from app.agents.planner import generate_plan
+from app.agents.researcher import run_parallel_research, search_sub_question
+from app.agents.synthesizer import synthesize_report
+from app.agents.extractor import extract_claims
 
 logger = logging.getLogger(__name__)
 
@@ -22,13 +25,17 @@ logger = logging.getLogger(__name__)
 async def execute_research_run(run_id: str) -> None:
     """
     Entry point called as an asyncio background task.
-    Drives the current active pipeline (Phase 1: linear chain).
+    Drives the research pipeline:
+      Phase 2: Planner (decompose question -> sub-questions)
+      Phase 3: Parallel Researcher (concurrent Tavily search across sub-questions)
+      Phase 4: Data Extractor (extract verifiable claims table from sources)
+      Phase 3/6: Synthesizer (compile findings into cited report)
     """
     logger.info("Starting research run %s", run_id)
 
     async with AsyncSessionLocal() as db:
-        # Mark as researching
-        await _set_status(db, run_id, RunStatus.RESEARCHING)
+        # Mark as planning
+        await _set_status(db, run_id, RunStatus.PLANNING)
 
         # Fetch question
         result = await db.execute(select(Run).where(Run.id == run_id))
@@ -40,11 +47,46 @@ async def execute_research_run(run_id: str) -> None:
         question = run.question
 
     try:
-        summary, sources = await run_linear_chain(question)
+        # Step 1: Planning (Phase 2)
+        logger.info("Run %s: generating research plan", run_id)
+        plan = await generate_plan(question)
 
-        # Persist sources + result
+        # Persist plan and transition to RESEARCHING
         async with AsyncSessionLocal() as db:
-            # Save sources
+            await db.execute(
+                update(Run)
+                .where(Run.id == run_id)
+                .values(
+                    status=RunStatus.RESEARCHING,
+                    plan=plan,
+                )
+            )
+            await db.commit()
+
+        # Step 2: Parallel Research (Phase 3)
+        sub_questions = plan.get("sub_questions", [])
+        if not sub_questions:
+            sub_questions = [{"id": 1, "question": question, "focus_area": "General"}]
+
+        logger.info(
+            "Run %s: running parallel research across %d sub-questions",
+            run_id,
+            len(sub_questions),
+        )
+        sources = await run_parallel_research(sub_questions)
+
+        # Fallback to direct search if sub-questions produced 0 sources
+        if not sources:
+            logger.info(
+                "Run %s: parallel research yielded 0 sources, attempting direct search fallback",
+                run_id,
+            )
+            sources = await search_sub_question(
+                {"question": question, "focus_area": "General"}, max_results=7
+            )
+
+        # Persist sources and transition to EXTRACTING
+        async with AsyncSessionLocal() as db:
             for s in sources:
                 db.add(
                     Source(
@@ -53,22 +95,58 @@ async def execute_research_run(run_id: str) -> None:
                         title=s.get("title"),
                         snippet=s.get("snippet"),
                         relevance_score=s.get("score"),
+                        sub_question=s.get("sub_question"),
                     )
                 )
+            await _set_status(db, run_id, RunStatus.EXTRACTING)
 
-            # Save result
+        # Step 3: Data Extraction (Phase 4)
+        logger.info("Run %s: extracting factual claims from sources", run_id)
+        claims = await extract_claims(question, sources)
+
+        # Persist extracted claims
+        async with AsyncSessionLocal() as db:
+            for c in claims:
+                db.add(
+                    Claim(
+                        run_id=run_id,
+                        sub_question=c.get("sub_question"),
+                        claim_text=c["claim_text"],
+                        supporting_quote=c.get("supporting_quote"),
+                        source_url=c["source_url"],
+                        confidence=c.get("confidence"),
+                    )
+                )
+            await db.commit()
+
+        # Step 4: Synthesis
+        logger.info("Run %s: synthesizing report from %d sources", run_id, len(sources))
+        summary = await synthesize_report(question, plan, sources)
+
+        # Save result and finalize run
+        async with AsyncSessionLocal() as db:
             await db.execute(
                 update(Run)
                 .where(Run.id == run_id)
                 .values(
                     status=RunStatus.COMPLETE,
                     result=summary,
-                    metadata_={"source_count": len(sources)},
+                    metadata_={
+                        "source_count": len(sources),
+                        "sub_questions_count": len(sub_questions),
+                        "claim_count": len(claims),
+                        "domain": plan.get("domain", "General Research"),
+                    },
                 )
             )
             await db.commit()
 
-        logger.info("Run %s complete", run_id)
+        logger.info(
+            "Run %s complete with %d sources and %d claims",
+            run_id,
+            len(sources),
+            len(claims),
+        )
 
     except Exception as exc:
         logger.exception("Run %s failed: %s", run_id, exc)
