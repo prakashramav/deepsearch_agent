@@ -40,8 +40,9 @@ export default function StatusTracker({ run }) {
       {!isFailed && (
         <div className="pipeline-track">
           {PIPELINE_STEPS.map((step, idx) => {
-            const done = currentStep > idx;
-            const active = currentStep === idx;
+            const isComplete = run.status === "complete";
+            const done = isComplete ? true : currentStep > idx;
+            const active = !isComplete && currentStep === idx;
             return (
               <div key={step} className={`pipeline-step ${done ? "done" : ""} ${active ? "active" : ""}`}>
                 <div className="step-dot">
