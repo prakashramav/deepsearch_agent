@@ -10,8 +10,6 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from google import genai
-from google.genai import types
 from tavily import TavilyClient
 
 from app.config import get_settings

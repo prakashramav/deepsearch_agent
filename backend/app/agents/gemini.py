@@ -5,21 +5,43 @@ import asyncio
 import logging
 from typing import Any
 
-from google import genai
-from google.genai import types
-
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
+# Attempt to import modern official google-genai SDK
+try:
+    from google import genai
+    from google.genai import types
+    _HAS_GOOGLE_GENAI = True
+except ImportError:
+    genai = None  # type: ignore[assignment]
+    types = None  # type: ignore[assignment]
+    _HAS_GOOGLE_GENAI = False
 
-def get_gemini_client() -> genai.Client:
+# Attempt to import legacy google-generativeai SDK as fallback
+try:
+    import google.generativeai as legacy_genai
+    _HAS_LEGACY_GENAI = True
+except ImportError:
+    legacy_genai = None  # type: ignore[assignment]
+    _HAS_LEGACY_GENAI = False
+
+
+def get_gemini_client() -> Any:
     """Return an authenticated Google GenAI client using Gemini API key."""
     api_key = settings.resolved_gemini_api_key
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY (or GOOGLE_API_KEY) is not set in .env")
-    return genai.Client(api_key=api_key)
+
+    if _HAS_GOOGLE_GENAI and genai is not None:
+        return genai.Client(api_key=api_key)
+    elif _HAS_LEGACY_GENAI and legacy_genai is not None:
+        legacy_genai.configure(api_key=api_key)
+        return legacy_genai
+
+    raise RuntimeError("Neither 'google-genai' nor 'google-generativeai' package is installed.")
 
 
 async def call_gemini(
@@ -50,14 +72,14 @@ async def generate_text(
     model: str | None = None,
 ) -> str:
     """
-    Generate text using Gemini client, with backwards-compatible support
-    for test mocks that mock either client.models or client.messages.
+    Generate text using Gemini client with support for both google-genai
+    and google-generativeai, plus test mocks.
     """
     loop = asyncio.get_event_loop()
     model_name = model or settings.gemini_model or "gemini-2.5-flash"
 
-    # 1. Real Google GenAI Client
-    if isinstance(client, genai.Client):
+    # 1. Official Google GenAI Client (google-genai)
+    if _HAS_GOOGLE_GENAI and genai is not None and isinstance(client, genai.Client):
         config_kwargs: dict[str, Any] = {"temperature": temperature}
         if system_prompt:
             config_kwargs["system_instruction"] = system_prompt
@@ -75,8 +97,25 @@ async def generate_text(
         )
         return response.text or ""
 
-    # 2. Test Mocks / Alternative Client interfaces
-    # Check if models.generate_content was configured
+    # 2. Legacy google-generativeai client module
+    if _HAS_LEGACY_GENAI and client is legacy_genai:
+        model_obj = legacy_genai.GenerativeModel(
+            model_name=model_name,
+            system_instruction=system_prompt if system_prompt else None,
+        )
+        response = await loop.run_in_executor(
+            None,
+            lambda: model_obj.generate_content(
+                prompt,
+                generation_config=legacy_genai.types.GenerationConfig(
+                    temperature=temperature,
+                    max_output_tokens=max_tokens,
+                ),
+            ),
+        )
+        return response.text or ""
+
+    # 3. Test Mocks / Alternative Client interfaces
     if hasattr(client, "models"):
         try:
             response = await loop.run_in_executor(
@@ -89,7 +128,6 @@ async def generate_text(
             if hasattr(response, "text") and isinstance(response.text, str):
                 return response.text
         except Exception as exc:
-            # If models has a side effect and messages doesn't, propagate it
             if not hasattr(client, "messages") or not getattr(client.messages.create, "side_effect", None):
                 raise exc
 

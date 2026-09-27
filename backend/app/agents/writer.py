@@ -10,9 +10,6 @@ import asyncio
 import logging
 from typing import Any
 
-from google import genai
-from google.genai import types
-
 from app.config import get_settings
 from app.agents.gemini import get_gemini_client, generate_text
 

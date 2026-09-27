@@ -17,11 +17,8 @@ import logging
 import re
 from typing import TypedDict
 
-from google import genai
-from google.genai import types
-
 from app.config import get_settings
-from app.agents.gemini import get_gemini_client
+from app.agents.gemini import get_gemini_client, generate_text
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -110,18 +107,12 @@ async def generate_plan(question: str, max_retries: int = 2) -> ResearchPlan:
     for attempt in range(max_retries + 1):
         try:
             logger.info("Planner attempt %d for question: %.80s", attempt + 1, question)
-            response = await loop.run_in_executor(
-                None,
-                lambda: client.models.generate_content(
-                    model=settings.gemini_model,
-                    contents=f"Research question: {question}",
-                    config=types.GenerateContentConfig(
-                        system_instruction=_SYSTEM_PROMPT,
-                        temperature=0.2,
-                    ),
-                ),
+            raw = await generate_text(
+                client=client,
+                prompt=f"Research question: {question}",
+                system_prompt=_SYSTEM_PROMPT,
+                temperature=0.2,
             )
-            raw = response.text or ""
             logger.debug("Planner raw output: %s", raw[:500])
             plan_dict = _extract_json(raw)
             return _validate_plan(plan_dict)
