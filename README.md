@@ -7,6 +7,83 @@
 
 ---
 
+## 📌 About The Project
+
+Standard conversational AI search tools often fall short when tasked with comprehensive, publication-grade research:
+- **Hallucinations & Speculation**: Single-prompt LLMs generate convincing answers but often invent details or cite non-existent publications.
+- **Narrow Research Breadth**: A single search query only touches the surface, missing orthogonal angles like pricing, regulatory shifts, tech architecture, and market fragmentation.
+- **Unverified Contradictions**: Information across the web is frequently inconsistent or conflicting without any mechanism to identify discrepancies.
+- **Superficial Synthesis**: Output usually lacks structured data tables, verified hard figures, and verifiable source attribution.
+
+**DeepResearch Agent** solves this by recreating an entire corporate research organization as an autonomous multi-agent pipeline. It ingests complex questions, methodically deconstructs them, searches the web in parallel across dozens of sources, extracts discrete factual assertions, cross-checks claims for agreement or divergence, synthesizes competitive matrices, and outputs an executive Markdown report with full source citations and one-click PDF export.
+
+---
+
+## 💡 How We Solved It
+
+Rather than relying on one massive, monolithic LLM prompt, we architected a modular multi-agent system powered by **LangGraph**, **Google Gemini 2.5 Flash**, and **Tavily Search**:
+
+1. **Agent Specialization over Monoliths**:
+   Each agent has a strictly bounded persona, distinct schema constraints, and isolated failure modes. If an extraction step fails, the pipeline isolates the error and executes fallback heuristics rather than collapsing the entire run.
+
+2. **Stateful Graph Orchestration (LangGraph)**:
+   The orchestration graph is governed by a **Supervisor Agent** state machine that manages checkpoint transitions in PostgreSQL, inspects intermediate artifact quality, and dynamically triggers self-correcting retry/refinement loops when source counts or citation coverage drop below predefined quality thresholds.
+
+3. **Multi-Source Fact Verification & Conflict Detection**:
+   The `Extractor` parses numbers, dates, and claims into structured records. Then the `FactChecker` cross-references these claims against all gathered sources to compute an agreement score, flag conflicting data points, and append audit notes.
+
+4. **Guaranteed Citation Auditing**:
+   The `CitationAgent` matches every inline bracketed citation (`[1]`, `[2]`) in the written report against the actual verified URL catalog, eliminating phantom sources and ensuring a 100% auditable references section.
+
+5. **Production Full-Stack Architecture**:
+   - **Backend**: FastAPI with async SQLAlchemy, connection pooling via `psycopg`, background worker execution, and automated table initialization.
+   - **Frontend**: Next.js 15 dark-mode application featuring live stage-by-stage status tracking, sub-question visualization, claims verification tables, run lookup by ID, and native browser print-to-PDF export.
+
+---
+
+## ⚙️ How It Works (End-to-End Workflow)
+
+```mermaid
+flowchart TD
+    User([User Question]) --> API[FastAPI /api/v1/research]
+    API --> Supervisor[Supervisor Agent StateGraph]
+    
+    subgraph MultiAgentPipeline [Orchestrated Research Graph]
+        Supervisor --> Planner[1. Planner Agent]
+        Planner -->|3-6 Sub-Questions| Researcher[2. Parallel Research Agent]
+        Researcher -->|Concurrent Tavily Queries| Dedup[Source Deduplication & Normalization]
+        
+        Dedup --> Gate{Source Adequacy Threshold >= 3?}
+        Gate -- No (Sparse Sources) --> Refine[Dynamic Refinement Loop]
+        Refine --> Researcher
+        Gate -- Yes --> Extractor[3. Data Extractor Agent]
+        
+        Extractor -->|Factual Claims & Quotes| FactChecker[4. Fact-Checker Agent]
+        FactChecker -->|Verified Claims & Conflict Flags| Analyst[5. Strategic Analyst Agent]
+        Analyst -->|Comparative Insights & Trends| Writer[6. Report Writer Agent]
+        Writer -->|Draft Report with Citations| Citation[7. Citation Auditor Agent]
+        Citation -->|Audited Report + References| Delivery[8. PostgreSQL DB Checkpoint]
+    end
+    
+    Delivery --> UI[Next.js Interactive Dashboard]
+    UI --> Export[Printable HTML & PDF Export Engine]
+```
+
+### Detailed Pipeline Stages
+
+| Stage | Agent / Module | Responsibility |
+|---|---|---|
+| **1. Planning** | `PlannerAgent` | Deconstructs the user prompt into 3–6 distinct, non-overlapping sub-questions across distinct research angles (e.g., market size, technical specs, competitive landscape, regulations). |
+| **2. Retrieval** | `ResearchAgent` | Dispatches concurrent Tavily web queries with concurrency limits (`asyncio.Semaphore`), normalizes URLs, strips tracking params, and removes duplicate sources. |
+| **3. Quality Gate** | `SupervisorAgent` | Evaluates collected source volume. If fewer than 3 sources are found, it generates a refined broad search strategy and re-runs retrieval. |
+| **4. Extraction** | `ExtractorAgent` | Extracts key verifiable factual claims, numbers, dates, and direct supporting quotes into structured claim records. |
+| **5. Verification** | `FactCheckerAgent` | Cross-checks extracted claims across all retrieved sources, verifying multi-source consensus and flagging data discrepancies or conflicting numbers. |
+| **6. Analysis** | `AnalystAgent` | Transforms raw data into strategic insights: identifies macro trends, compares key players/technologies, and resolves contested claims. |
+| **7. Writing** | `WriterAgent` | Formats an executive-ready Markdown report with deep-dive sections, comparative Markdown tables, and mandatory inline citations (`[1]`, `[2]`). |
+| **8. Audit & Export** | `CitationAgent` & `ExportEngine` | Validates every in-text citation against the source catalog, verifies URLs, saves checkpoints to PostgreSQL, and provides styled PDF / Markdown export endpoints. |
+
+---
+
 ## Architecture
 
 ```
