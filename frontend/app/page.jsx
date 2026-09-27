@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import QuestionForm from "@/components/QuestionForm";
 import StatusTracker from "@/components/StatusTracker";
 import ReportViewer from "@/components/ReportViewer";
@@ -10,12 +10,31 @@ import ClaimsTable from "@/components/ClaimsTable";
 import { useResearch } from "@/hooks/useResearch";
 
 export default function HomePage() {
-  const { run, sources, claims, submit, loading, error } = useResearch();
+  const { run, sources, claims, submit, loadRun, loading, error } = useResearch();
   const [question, setQuestion] = useState("");
+  const [lookupId, setLookupId] = useState("");
+  const [showLookup, setShowLookup] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const urlRunId = params.get("run_id");
+      if (urlRunId) {
+        loadRun(urlRunId);
+      }
+    }
+  }, [loadRun]);
 
   const handleSubmit = (q) => {
     setQuestion(q);
     submit(q);
+  };
+
+  const handleLookup = (e) => {
+    e.preventDefault();
+    if (lookupId.trim()) {
+      loadRun(lookupId.trim());
+    }
   };
 
   const isComplete = run?.status === "complete";
@@ -60,11 +79,36 @@ export default function HomePage() {
       <main className="main-content">
         {/* Question Input */}
         <section className="card input-card">
-          <h2 className="card-title">
-            <span className="card-title-icon">💡</span>
-            Research Question
-          </h2>
-          <QuestionForm onSubmit={handleSubmit} disabled={loading} />
+          <div className="card-header-row">
+            <h2 className="card-title">
+              <span className="card-title-icon">💡</span>
+              {showLookup ? "Inspect Existing Run" : "Research Question"}
+            </h2>
+            <button
+              type="button"
+              className="lookup-toggle-btn"
+              onClick={() => setShowLookup(!showLookup)}
+            >
+              {showLookup ? "← New Question" : "🔍 Inspect Run ID"}
+            </button>
+          </div>
+
+          {showLookup ? (
+            <form onSubmit={handleLookup} className="lookup-form">
+              <input
+                type="text"
+                className="lookup-input"
+                placeholder="Paste Run ID (e.g. 9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d)"
+                value={lookupId}
+                onChange={(e) => setLookupId(e.target.value)}
+              />
+              <button type="submit" className="lookup-submit-btn" disabled={loading || !lookupId.trim()}>
+                Load Run
+              </button>
+            </form>
+          ) : (
+            <QuestionForm onSubmit={handleSubmit} disabled={loading} />
+          )}
         </section>
 
         {/* Error banner */}
@@ -100,7 +144,11 @@ export default function HomePage() {
           <div className="results-grid">
             {/* Report */}
             <section className="card report-card">
-              <ReportViewer result={run.result} question={question} />
+              <ReportViewer
+                result={run.result}
+                question={run.question || question}
+                runId={run.run_id}
+              />
             </section>
 
             {/* Sources sidebar */}

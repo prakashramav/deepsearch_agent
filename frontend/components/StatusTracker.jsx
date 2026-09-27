@@ -65,6 +65,19 @@ export default function StatusTracker({ run }) {
         </div>
       )}
 
+      {/* Supervisor action notes (Phase 7) */}
+      {run.metadata?.supervisor_notes?.length > 0 && (
+        <div className="supervisor-notes-box">
+          <span className="supervisor-icon">🤖</span>
+          <div className="supervisor-notes-content">
+            <span className="supervisor-title">Supervisor Orchestration:</span>
+            {run.metadata.supervisor_notes.map((note, i) => (
+              <p key={i} className="supervisor-note">{note}</p>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Run metadata */}
       <div className="run-meta">
         <span className="run-id">Run ID: <code>{run.run_id}</code></span>
@@ -91,6 +104,11 @@ export default function StatusTracker({ run }) {
         {run.metadata?.conflict_count !== undefined && run.metadata.conflict_count > 0 && (
           <span className="source-count conflict-meta">
             ⚠️ {run.metadata.conflict_count} conflicts
+          </span>
+        )}
+        {run.metadata?.unique_sources_cited !== undefined && (
+          <span className="source-count cite-meta">
+            🏷️ {run.metadata.unique_sources_cited} cited ({run.metadata.citation_coverage_pct || 100}%)
           </span>
         )}
       </div>

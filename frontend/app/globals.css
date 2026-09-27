@@ -194,6 +194,68 @@ button { cursor: pointer; font-family: inherit; }
 
 .card-title-icon { font-size: 1rem; }
 
+.card-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.card-header-row .card-title {
+  margin-bottom: 0;
+}
+.lookup-toggle-btn {
+  background: rgba(129, 140, 248, 0.08);
+  border: 1px solid var(--border);
+  color: var(--indigo);
+  font-size: 0.78rem;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+.lookup-toggle-btn:hover {
+  background: rgba(129, 140, 248, 0.18);
+  border-color: var(--indigo);
+  color: #fff;
+}
+.lookup-form {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+.lookup-input {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  color: #e2e8f0;
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  padding: 12px 16px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.lookup-input:focus {
+  border-color: var(--indigo);
+}
+.lookup-submit-btn {
+  background: var(--grad-brand);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  padding: 0 20px;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.lookup-submit-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* ── Question Form ───────────────────────────────────────────────────────────── */
 .question-form-container { display: flex; flex-direction: column; gap: 16px; }
 
@@ -406,6 +468,21 @@ button { cursor: pointer; font-family: inherit; }
   padding: 12px 16px;
   font-size: 0.88rem;
 }
+
+.supervisor-notes-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(129, 140, 248, 0.08);
+  border: 1px solid rgba(129, 140, 248, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 0.82rem;
+}
+.supervisor-icon { font-size: 1.1rem; line-height: 1; }
+.supervisor-notes-content { display: flex; flex-direction: column; gap: 2px; }
+.supervisor-title { font-weight: 600; color: var(--indigo); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.supervisor-note { color: #cbd5e1; line-height: 1.4; }
 
 .run-meta {
   display: flex;
@@ -1106,6 +1183,12 @@ button { cursor: pointer; font-family: inherit; }
   border-color: rgba(248, 113, 113, 0.25) !important;
 }
 
+.cite-meta {
+  color: var(--sky) !important;
+  background: rgba(56, 189, 248, 0.08) !important;
+  border-color: rgba(56, 189, 248, 0.25) !important;
+}
+
 /* ── Footer ──────────────────────────────────────────────────────────────────── */
 .app-footer {
   border-top: 1px solid var(--border);
@@ -1120,3 +1203,72 @@ button { cursor: pointer; font-family: inherit; }
 ::-webkit-scrollbar-track { background: var(--bg-base); }
 ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #334155; }
+
+/* ── Phase 8 Print & PDF Media Styles ────────────────────────────────────────── */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    padding: 0 !important;
+  }
+  .hero-header,
+  .input-card,
+  .status-card,
+  .plan-card,
+  .claims-card,
+  .sources-sidebar,
+  .report-toolbar,
+  .app-footer,
+  .print-controls,
+  .loading-section,
+  .lookup-toggle-btn {
+    display: none !important;
+  }
+  .app-shell,
+  .main-content,
+  .results-grid,
+  .report-card {
+    display: block !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  .report-body {
+    color: #1e293b !important;
+  }
+  .report-body h1,
+  .report-body h2,
+  .report-body h3 {
+    color: #0f172a !important;
+    page-break-after: avoid;
+  }
+  .report-body table,
+  .report-body blockquote {
+    page-break-inside: avoid;
+  }
+  .report-body table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+  .report-body th,
+  .report-body td {
+    border: 1px solid #cbd5e1;
+    padding: 6px 10px;
+    color: #000;
+  }
+  .report-question {
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #0f172a;
+    padding: 10px 14px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+  }
+  @page {
+    margin: 1.8cm 1.5cm;
+    size: A4;
+  }
+}

@@ -2,7 +2,7 @@
 
 > **Multi-agent AI research system** — takes any research question, runs parallel web search across specialized agents, fact-checks claims against multiple sources, and produces a fully cited Markdown report.
 
-[![Phase](https://img.shields.io/badge/Phase-5%20Complete-brightgreen)](#phases)
+[![Phase](https://img.shields.io/badge/All%20Phases-Complete-brightgreen)](#phases)
 [![Stack](https://img.shields.io/badge/Stack-FastAPI%20%7C%20Next.js%20%7C%20LangGraph-blue)](#tech-stack)
 
 ---
@@ -33,7 +33,7 @@ Next.js UI ──── REST API ────► FastAPI Backend
 
 | Layer      | Technology                          |
 |------------|-------------------------------------|
-| Frontend   | Next.js 15 (App Router), Tailwind CSS |
+| Frontend   | Next.js 15 (App Router), Vanilla CSS |
 | Backend    | FastAPI (Python), async SQLAlchemy  |
 | Agents     | LangGraph, LangChain, Claude Sonnet |
 | Search     | Tavily (purpose-built for LLM agents) |
@@ -48,7 +48,7 @@ Next.js UI ──── REST API ────► FastAPI Backend
 ### 1. Clone & configure
 
 ```bash
-git clone https://github.com/youruser/DeepResearch-Agent
+git clone https://github.com/prakashramav/deepsearch_agent
 cd DeepResearch-Agent
 
 # Copy and fill in credentials
@@ -93,13 +93,17 @@ npm run dev
 
 ## API Reference
 
-| Method | Endpoint                        | Description                      |
-|--------|---------------------------------|----------------------------------|
-| POST   | `/api/v1/research`              | Start a new research run         |
-| GET    | `/api/v1/research/{run_id}`     | Poll run status + result         |
-| GET    | `/api/v1/research/{run_id}/sources` | Get sources for a run        |
-| GET    | `/health`                       | Health check                     |
-| GET    | `/docs`                         | Interactive Swagger UI           |
+| Method | Endpoint                             | Description                            |
+|--------|--------------------------------------|----------------------------------------|
+| POST   | `/api/v1/research`                   | Start a new research run               |
+| GET    | `/api/v1/research/{run_id}`          | Poll run status + result               |
+| GET    | `/api/v1/research/{run_id}/sources`  | Get sources for a run                  |
+| GET    | `/api/v1/research/{run_id}/claims`   | Get extracted & verified factual claims|
+| GET    | `/api/v1/research/{run_id}/export/markdown` | Download raw report as Markdown (.md) |
+| GET    | `/api/v1/research/{run_id}/export/html`     | Printable HTML report view             |
+| GET    | `/api/v1/research/{run_id}/export/pdf`      | Browser-printable PDF layout endpoint  |
+| GET    | `/health`                            | Health check                           |
+| GET    | `/docs`                              | Interactive Swagger UI                 |
 
 **Start research:**
 ```bash
@@ -127,9 +131,9 @@ curl http://localhost:8000/api/v1/research/abc-123
 | 3     | Parallel research + source collection         | ✅ Done |
 | 4     | Data extraction (claims table)                | ✅ Done |
 | 5     | Conflict detection + fact verification        | ✅ Done |
-| 6     | Synthesis, writing, citations                 | 🔜 Next |
-| 7     | Supervisor node + retry logic                 | 🔜     |
-| 8     | PDF export + full pipeline UI demo            | 🔜     |
+| 6     | Synthesis, writing, citations                 | ✅ Done |
+| 7     | Supervisor node + retry logic                 | ✅ Done |
+| 8     | PDF export + full pipeline UI demo            | ✅ Done |
 
 ---
 
@@ -140,31 +144,42 @@ DeepResearch-Agent/
 ├── backend/
 │   ├── app/
 │   │   ├── agents/
-│   │   │   └── phase1_chain.py    # Tavily search + Claude summarise
+│   │   │   ├── planner.py         # Sub-question decomposition
+│   │   │   ├── researcher.py      # Concurrent Tavily search + deduplication
+│   │   │   ├── extractor.py       # Factual claims & stats extraction
+│   │   │   ├── fact_checker.py    # Cross-source verification & conflict flags
+│   │   │   ├── analyst.py         # Synthesis, trend analysis, comparisons
+│   │   │   ├── writer.py          # Markdown executive report formatting
+│   │   │   ├── citation_agent.py  # Source reference audit & link validation
+│   │   │   └── supervisor.py      # LangGraph state machine & retry loop
 │   │   ├── routers/
-│   │   │   └── research.py        # REST API endpoints
+│   │   │   └── research.py        # REST API endpoints + export routes
 │   │   ├── config.py              # Settings via pydantic-settings
 │   │   ├── database.py            # Async SQLAlchemy engine
+│   │   ├── export.py              # Printable HTML & PDF export renderer
 │   │   ├── main.py                # FastAPI app factory
 │   │   ├── models.py              # ORM models (runs/sources/claims)
 │   │   ├── schemas.py             # Pydantic request/response schemas
-│   │   └── tasks.py               # Background task runner
+│   │   └── tasks.py               # Background task runner & orchestrator
+│   ├── tests/                     # 33 unit & integration tests
 │   ├── Dockerfile
 │   └── requirements.txt
 ├── frontend/
 │   ├── app/
-│   │   ├── globals.css            # Full design system
+│   │   ├── globals.css            # Dark-theme design system & print styles
 │   │   ├── layout.js              # Root layout + SEO metadata
-│   │   └── page.jsx               # Main page
+│   │   └── page.jsx               # Main page with Run ID lookup & query params
 │   ├── components/
 │   │   ├── QuestionForm.jsx       # Research question input
-│   │   ├── StatusTracker.jsx      # Live pipeline progress
-│   │   ├── ReportViewer.jsx       # Rendered Markdown report
+│   │   ├── PlanViewer.jsx         # Research plan & sub-questions view
+│   │   ├── ClaimsTable.jsx        # Verified claims & conflict indicators
+│   │   ├── StatusTracker.jsx      # Live pipeline progress & supervisor audit
+│   │   ├── ReportViewer.jsx       # Rendered report with PDF / MD exports
 │   │   └── SourcesList.jsx        # Clickable sources sidebar
 │   ├── hooks/
-│   │   └── useResearch.js         # Submit + poll lifecycle hook
+│   │   └── useResearch.js         # Submit, poll, and load run hook
 │   ├── lib/
-│   │   └── api.js                 # Backend API client
+│   │   └── api.js                 # Backend API client + export URLs
 │   └── Dockerfile
 ├── docker-compose.yml
 ├── .env.example                   # Copy → .env, fill in secrets

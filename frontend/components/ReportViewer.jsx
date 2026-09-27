@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { getExportPdfUrl } from "@/lib/api";
 
 // Lazy-load react-markdown on the client to avoid SSR issues
 let ReactMarkdown = null;
 
-export default function ReportViewer({ result, question }) {
+export default function ReportViewer({ result, question, runId }) {
   const [MarkdownComponent, setMarkdownComponent] = useState(null);
   const [copied, setCopied] = useState(false);
 
@@ -36,6 +37,14 @@ export default function ReportViewer({ result, question }) {
     URL.revokeObjectURL(url);
   };
 
+  const handleExportPdf = () => {
+    if (runId) {
+      window.open(getExportPdfUrl(runId), "_blank");
+    } else {
+      window.print();
+    }
+  };
+
   return (
     <div className="report-viewer">
       {/* Toolbar */}
@@ -57,12 +66,20 @@ export default function ReportViewer({ result, question }) {
             {copied ? "✅ Copied!" : "📋 Copy"}
           </button>
           <button
-            className="toolbar-btn primary"
+            className="toolbar-btn"
             onClick={handleDownload}
             id="download-report-btn"
             title="Download .md"
           >
-            ⬇️ Download .md
+            ⬇️ .md
+          </button>
+          <button
+            className="toolbar-btn primary pdf-btn"
+            onClick={handleExportPdf}
+            id="export-pdf-btn"
+            title="Export / Print PDF"
+          >
+            🖨️ Export PDF
           </button>
         </div>
       </div>

@@ -80,5 +80,33 @@ export function useResearch() {
     [startPolling, stopPolling]
   );
 
-  return { run, sources, claims, submit, loading, error };
+  const loadRun = useCallback(
+    async (runId) => {
+      if (!runId.trim()) return;
+      setLoading(true);
+      setError(null);
+      stopPolling();
+      try {
+        const data = await getResearchRun(runId.trim());
+        setRun(data);
+        if (TERMINAL_STATUSES.has(data.status)) {
+          const [srcs, clms] = await Promise.all([
+            getRunSources(runId.trim()),
+            getRunClaims(runId.trim()),
+          ]);
+          setSources(srcs);
+          setClaims(clms);
+          setLoading(false);
+        } else {
+          startPolling(runId.trim());
+        }
+      } catch (err) {
+        setError(err.message);
+        setLoading(false);
+      }
+    },
+    [startPolling, stopPolling]
+  );
+
+  return { run, sources, claims, submit, loadRun, loading, error };
 }

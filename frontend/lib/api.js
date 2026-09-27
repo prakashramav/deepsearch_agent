@@ -39,6 +39,14 @@ export async function getRunClaims(runId) {
   return res.json();
 }
 
+export function getExportMarkdownUrl(runId) {
+  return `${API_BASE}/api/v1/research/${runId}/export/markdown`;
+}
+
+export function getExportPdfUrl(runId) {
+  return `${API_BASE}/api/v1/research/${runId}/export/html?print=true`;
+}
+
 export async function healthCheck() {
   const res = await fetch(`${API_BASE}/health`);
   if (!res.ok) throw new Error("Backend unreachable");

@@ -7,6 +7,7 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi.responses import HTMLResponse, PlainTextResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +15,7 @@ from app.database import get_db
 from app.models import Run, RunStatus, Source, Claim
 from app.schemas import ResearchRequest, RunCreate, RunResponse
 from app.tasks import execute_research_run
+from app.export import generate_printable_html
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +116,48 @@ async def get_run_claims(
         }
         for c in claims
     ]
+
+
+@router.get("/{run_id}/export/markdown")
+async def export_run_markdown(
+    run_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Download the research report as a raw Markdown file."""
+    result = await db.execute(select(Run).where(Run.id == run_id))
+    run = result.scalar_one_or_none()
+    if run is None or not run.result:
+        raise HTTPException(status_code=404, detail="Run not found or report not yet generated")
+
+    return PlainTextResponse(
+        content=run.result,
+        media_type="text/markdown",
+        headers={"Content-Disposition": f'attachment; filename="deepresearch-report-{run_id[:8]}.md"'},
+    )
+
+
+@router.get("/{run_id}/export/html", response_class=HTMLResponse)
+@router.get("/{run_id}/export/pdf", response_class=HTMLResponse)
+async def export_run_printable(
+    run_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Render executive-grade standalone HTML document styled for print-to-PDF.
+    Accessing with ?print=true automatically triggers the browser print dialog.
+    """
+    result = await db.execute(select(Run).where(Run.id == run_id))
+    run = result.scalar_one_or_none()
+    if run is None or not run.result:
+        raise HTTPException(status_code=404, detail="Run not found or report not yet generated")
+
+    html = generate_printable_html(
+        question=run.question,
+        result_markdown=run.result,
+        run_id=run.id,
+        metadata=run.metadata_,
+    )
+    return HTMLResponse(content=html)
 
 
 async def _fire_and_forget(run_id: str) -> None:
